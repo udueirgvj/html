@@ -1,0 +1,231 @@
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, 
+    CallbackContext, ConversationHandler
+)
+import sqlite3
+from datetime import datetime
+
+# إعدادات التخزين
+DB_NAME = "support_bot.db"
+API_TOKEN = "7566546732:AAG5wlvY5Ro8Q5srLeM_LaGHLwjoZS0LwlU"  # استبدل هذا بالتوكن الخاص بك
+
+# حالات المحادثة
+OPEN_TICKET, USER_MESSAGE, ADMIN_REPLY = range(3)
+
+# إعداد التسجيل
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# إنشاء قاعدة البيانات
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            status TEXT DEFAULT 'open',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id INTEGER,
+            user_id INTEGER,
+            message TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(ticket_id) REFERENCES tickets(id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# بدء البوت
+def start(update: Update, context: CallbackContext) -> None:
+    user = update.message.from_user
+    update.message.reply_text(
+        f"مرحباً {user.first_name}!\n"
+        "مرحباً بك في نظام الدعم الفني.\n"
+        "استخدم /newticket لفتح تذكرة جديدة."
+    )
+
+# فتح تذكرة جديدة
+def new_ticket(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    # إنشاء التذكرة
+    cursor.execute(
+        "INSERT INTO tickets (user_id) VALUES (?)",
+        (user.id,)
+    )
+    ticket_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    context.user_data['ticket_id'] = ticket_id
+    update.message.reply_text("تم فتح تذكرة جديدة. أرسل رسالتك الآن:")
+    
+    return USER_MESSAGE
+
+# معالجة رسالة المستخدم
+def user_message(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    message_text = update.message.text
+    ticket_id = context.user_data.get('ticket_id')
+    
+    if not ticket_id:
+        update.message.reply_text("حدث خطأ! الرجاء استخدام /newticket لفتح تذكرة.")
+        return ConversationHandler.END
+    
+    # حفظ الرسالة في قاعدة البيانات
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO messages (ticket_id, user_id, message) VALUES (?, ?, ?)",
+        (ticket_id, user.id, message_text)
+    )
+    conn.commit()
+    
+    # إرسال إشعار للمسؤولين
+    cursor.execute("SELECT user_id FROM tickets WHERE id = ?", (ticket_id,))
+    ticket_owner = cursor.fetchone()[0]
+    
+    keyboard = [
+        [InlineKeyboardButton("الرد على التذكرة", callback_data=f"reply_{ticket_id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID,  # استبدل بمعرف محادثة المسؤول
+        text=f"📬 تذكرة جديدة #{ticket_id}\n"
+             f"المستخدم: {user.first_name}\n"
+             f"الرسالة: {message_text}",
+        reply_markup=reply_markup
+    )
+    conn.close()
+    
+    update.message.reply_text(
+        "تم استلام رسالتك! سيرد عليك فريق الدعم قريباً.\n"
+        "يمكنك إرسال رسائل إضافية أو /cancel لإغلاق التذكرة."
+    )
+    return USER_MESSAGE
+
+# إغلاق التذكرة
+def cancel(update: Update, context: CallbackContext) -> int:
+    user = update.message.from_user
+    ticket_id = context.user_data.get('ticket_id')
+    
+    if ticket_id:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE tickets SET status = 'closed' WHERE id = ?",
+            (ticket_id,)
+        )
+        conn.commit()
+        conn.close()
+        del context.user_data['ticket_id']
+    
+    update.message.reply_text("تم إغلاق التذكرة. استخدم /newticket لفتح تذكرة جديدة.")
+    return ConversationHandler.END
+
+# رد المسؤول (Callback)
+def admin_reply_callback(update: Update, context: CallbackContext) -> int:
+    query = update.callback_query
+    query.answer()
+    ticket_id = int(query.data.split('_')[1])
+    
+    context.user_data['ticket_id'] = ticket_id
+    query.edit_message_text(f"الرد على التذكرة #{ticket_id}. أرسل ردك الآن:")
+    
+    return ADMIN_REPLY
+
+# معالجة رد المسؤول
+def admin_reply(update: Update, context: CallbackContext) -> int:
+    admin_message = update.message.text
+    ticket_id = context.user_data.get('ticket_id')
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    # الحصول على معلومات التذكرة
+    cursor.execute("SELECT user_id FROM tickets WHERE id = ?", (ticket_id,))
+    user_id = cursor.fetchone()[0]
+    
+    # حفظ رد المسؤول
+    cursor.execute(
+        "INSERT INTO messages (ticket_id, user_id, message) VALUES (?, ?, ?)",
+        (ticket_id, update.message.from_user.id, admin_message)
+    )
+    conn.commit()
+    
+    # إرسال الرد للمستخدم
+    context.bot.send_message(
+        chat_id=user_id,
+        text=f"📩 رد الدعم على التذكرة #{ticket_id}:\n{admin_message}"
+    )
+    
+    conn.close()
+    update.message.reply_text("تم إرسال ردك للمستخدم.")
+    del context.user_data['ticket_id']
+    return ConversationHandler.END
+
+# عرض التذاكر المفتوحة
+def show_tickets(update: Update, context: CallbackContext) -> None:
+    if update.message.from_user.id != ADMIN_CHAT_ID:  # التحقق من المسؤول
+        return
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, user_id, created_at FROM tickets WHERE status = 'open'")
+    tickets = cursor.fetchall()
+    conn.close()
+    
+    if not tickets:
+        update.message.reply_text("لا توجد تذاكر مفتوحة.")
+        return
+    
+    response = "📂 التذاكر المفتوحة:\n\n"
+    for ticket in tickets:
+        response += (
+            f"التذكرة #{ticket[0]}\n"
+            f"المستخدم: {ticket[1]}\n"
+            f"التاريخ: {ticket[2]}\n\n"
+        )
+    
+    update.message.reply_text(response)
+
+def main() -> None:
+    init_db()
+    updater = Updater(API_TOKEN)
+    dispatcher = updater.dispatcher
+
+    # تعريف الـ ConversationHandler
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('newticket', new_ticket)],
+        states={
+            USER_MESSAGE: [MessageHandler(Filters.text & ~Filters.command, user_message)],
+            ADMIN_REPLY: [MessageHandler(Filters.text & ~Filters.command, admin_reply)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    # تسجيل الـ Handlers
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("tickets", show_tickets))
+    dispatcher.add_handler(conv_handler)
+    dispatcher.add_handler(CallbackQueryHandler(admin_reply_callback, pattern=r"reply_\d+"))
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
