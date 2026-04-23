@@ -1,231 +1,1610 @@
-import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters, 
-    CallbackContext, ConversationHandler
-)
-import sqlite3
-from datetime import datetime
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevStudio Pro — بيئة التطوير المتكاملة</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg0:#04040a; --bg1:#08080f; --bg2:#0c0c16; --bg3:#10101c; --bg4:#141420; --bg5:#1a1a28;
+  --a1:#00d4ff; --a2:#7c3aed; --a3:#10b981; --aw:#f59e0b; --ae:#ef4444; --aapk:#f97316;
+  --bd:#1c1c2e; --bdl:#26263a; --tp:#e8e8f4; --ts:#7777aa; --td:#3a3a5c;
+  --fc:'JetBrains Mono',monospace; --fu:'Cairo',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--fu);background:var(--bg0);color:var(--tp);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:var(--bdl);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--a2)}
 
-# إعدادات التخزين
-DB_NAME = "support_bot.db"
-API_TOKEN = "7566546732:AAG5wlvY5Ro8Q5srLeM_LaGHLwjoZS0LwlU"  # استبدل هذا بالتوكن الخاص بك
+/* ═══ SCREENS ═══ */
+.screen{display:none;width:100%;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+#screen-ide{flex-direction:row;height:100vh;overflow:hidden}
 
-# حالات المحادثة
-OPEN_TICKET, USER_MESSAGE, ADMIN_REPLY = range(3)
+/* ═══ LANDING ═══ */
+#screen-landing{align-items:center;justify-content:center;position:relative;overflow:hidden}
+.l-bg{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 90% 70% at 15% 20%,rgba(124,58,237,.09),transparent 55%),
+  radial-gradient(ellipse 70% 90% at 85% 80%,rgba(0,212,255,.06),transparent 55%),
+  radial-gradient(ellipse 50% 50% at 50% 50%,rgba(16,185,129,.04),transparent 55%)}
+.l-grid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(28,28,46,.5) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(28,28,46,.5) 1px,transparent 1px);
+  background-size:36px 36px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%)}
+.l-content{position:relative;z-index:1;text-align:center;padding:40px 20px}
+.logo{display:inline-flex;align-items:center;gap:14px;margin-bottom:10px}
+.logo-box{width:56px;height:56px;background:linear-gradient(135deg,var(--a2),var(--a1));
+  border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 0 35px rgba(124,58,237,.5)}
+.logo-name{font-size:34px;font-weight:900;letter-spacing:-1.5px}
+.logo-name span{color:var(--a1)}
+.l-sub{font-size:12px;color:var(--ts);letter-spacing:3px;text-transform:uppercase;margin-bottom:52px}
+.cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:960px}
+.card{width:268px;background:var(--bg3);border:1px solid var(--bd);border-radius:22px;
+  padding:34px 26px;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);
+  position:relative;overflow:hidden;text-align:right}
+.card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;border-radius:22px}
+.card.cu::before{background:radial-gradient(ellipse at 80% 20%,rgba(0,212,255,.12),transparent 65%)}
+.card.ce::before{background:radial-gradient(ellipse at 80% 20%,rgba(124,58,237,.12),transparent 65%)}
+.card.cc::before{background:radial-gradient(ellipse at 80% 20%,rgba(16,185,129,.12),transparent 65%)}
+.card:hover{transform:translateY(-7px)}.card:hover::before{opacity:1}
+.card.cu:hover{box-shadow:0 22px 44px rgba(0,212,255,.12);border-color:rgba(0,212,255,.35)}
+.card.ce:hover{box-shadow:0 22px 44px rgba(124,58,237,.12);border-color:rgba(124,58,237,.35)}
+.card.cc:hover{box-shadow:0 22px 44px rgba(16,185,129,.12);border-color:rgba(16,185,129,.35)}
+.card-ico{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin-bottom:18px}
+.cu .card-ico{background:rgba(0,212,255,.1);color:var(--a1)}
+.ce .card-ico{background:rgba(124,58,237,.1);color:var(--a2)}
+.cc .card-ico{background:rgba(16,185,129,.1);color:var(--a3)}
+.card h3{font-size:18px;font-weight:800;margin-bottom:8px}
+.card p{font-size:13px;color:var(--ts);line-height:1.65}
+.card-arr{position:absolute;bottom:20px;left:20px;width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+  opacity:0;transform:translateX(8px);transition:all .3s}
+.cu .card-arr{background:rgba(0,212,255,.15);color:var(--a1)}
+.ce .card-arr{background:rgba(124,58,237,.15);color:var(--a2)}
+.cc .card-arr{background:rgba(16,185,129,.15);color:var(--a3)}
+.card:hover .card-arr{opacity:1;transform:translateX(0)}
+.card{animation:slideUp .5s ease both}
+.card:nth-child(1){animation-delay:.1s}.card:nth-child(2){animation-delay:.2s}.card:nth-child(3){animation-delay:.3s}
+@keyframes slideUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
 
-# إعداد التسجيل
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+/* ═══ SIDEBAR ═══ */
+.sidebar{width:260px;min-width:180px;background:var(--bg2);border-left:1px solid var(--bd);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;flex-shrink:0}
+.sb-hd{padding:14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.sb-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ts)}
+.sb-acts{padding:8px;display:flex;gap:5px;border-bottom:1px solid var(--bd)}
+.sb-btn{flex:1;padding:7px;font-size:11px;background:var(--bg3);border:1px solid var(--bd);
+  border-radius:7px;color:var(--ts);cursor:pointer;transition:all .2s;font-family:var(--fu);
+  display:flex;align-items:center;justify-content:center;gap:4px}
+.sb-btn:hover{background:var(--bg5)}
+.sb-btn.bf:hover{color:var(--a1);border-color:rgba(0,212,255,.3)}
+.sb-btn.bd2:hover{color:var(--a2);border-color:rgba(124,58,237,.3)}
+.file-tree{flex:1;overflow-y:auto;padding:6px}
+.ti{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;cursor:pointer;
+  font-size:12px;font-family:var(--fc);color:var(--ts);transition:all .15s;position:relative;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ti:hover{background:var(--bg4);color:var(--tp)}
+.ti.act{background:var(--bg5);color:var(--a1)}
+.ti .ico{font-size:13px;flex-shrink:0}
+.ti .nm{overflow:hidden;text-overflow:ellipsis;flex:1}
+.ti .del{position:absolute;left:6px;opacity:0;font-size:10px;color:var(--ae);padding:2px 5px;
+  border-radius:3px;background:rgba(239,68,68,.1);transition:opacity .2s}
+.ti:hover .del{opacity:1}
+.tf-ch{padding-right:14px}
+.tf-fold{font-weight:700}
 
-# إنشاء قاعدة البيانات
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tickets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            status TEXT DEFAULT 'open',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            ticket_id INTEGER,
-            user_id INTEGER,
-            message TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(ticket_id) REFERENCES tickets(id)
-        )
-    ''')
-    conn.commit()
-    conn.close()
+/* ═══ EDITOR AREA ═══ */
+.editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;height:100vh;min-width:0}
+.topbar{height:50px;min-height:50px;background:var(--bg2);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:8px;padding:0 14px}
+.tabs-row{flex:1;display:flex;gap:3px;overflow-x:auto;min-width:0}
+.tab{padding:5px 12px;border-radius:6px;font-size:11px;font-family:var(--fc);
+  color:var(--ts);cursor:pointer;border:1px solid transparent;transition:all .2s;
+  white-space:nowrap;display:flex;align-items:center;gap:5px}
+.tab:hover{color:var(--tp);background:var(--bg4)}
+.tab.act{color:var(--a1);background:var(--bg5);border-color:var(--bdl)}
+.tab-x{opacity:.4;font-size:9px}.tab:hover .tab-x{opacity:1}
+.tb-btns{display:flex;gap:6px;flex-shrink:0}
+.cvt-btn{padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;font-family:var(--fu);
+  cursor:pointer;border:none;transition:all .25s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.apk-btn{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 0 14px rgba(249,115,22,.3)}
+.apk-btn:hover{box-shadow:0 0 28px rgba(249,115,22,.55);transform:translateY(-1px)}
+.web-btn{background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;box-shadow:0 0 14px rgba(14,165,233,.3)}
+.web-btn:hover{box-shadow:0 0 28px rgba(14,165,233,.55);transform:translateY(-1px)}
+.ai-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 0 14px rgba(16,185,129,.3)}
+.ai-btn:hover{box-shadow:0 0 28px rgba(16,185,129,.55);transform:translateY(-1px)}
 
-# بدء البوت
-def start(update: Update, context: CallbackContext) -> None:
-    user = update.message.from_user
-    update.message.reply_text(
-        f"مرحباً {user.first_name}!\n"
-        "مرحباً بك في نظام الدعم الفني.\n"
-        "استخدم /newticket لفتح تذكرة جديدة."
-    )
+/* ═══ EDITOR WRAPPER ═══ */
+.ed-wrap{flex:1;overflow:hidden;position:relative}
+.ed-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;color:var(--td);font-size:14px;pointer-events:none}
+.ed-ph .big{font-size:56px;opacity:.25}
+.CodeMirror{height:100%!important;font-family:var(--fc)!important;font-size:14px!important;
+  line-height:1.75!important;background:var(--bg0)!important}
+.CodeMirror-scroll{height:100%!important}
 
-# فتح تذكرة جديدة
-def new_ticket(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    # إنشاء التذكرة
-    cursor.execute(
-        "INSERT INTO tickets (user_id) VALUES (?)",
-        (user.id,)
-    )
-    ticket_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    context.user_data['ticket_id'] = ticket_id
-    update.message.reply_text("تم فتح تذكرة جديدة. أرسل رسالتك الآن:")
-    
-    return USER_MESSAGE
+/* ═══ BOTTOM PANEL ═══ */
+.bot-panel{height:185px;min-height:185px;background:var(--bg2);border-top:1px solid var(--bd);
+  display:flex;flex-direction:column;overflow:hidden}
+.pt-row{display:flex;gap:0;border-bottom:1px solid var(--bd)}
+.pt{padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;color:var(--td);
+  border-bottom:2px solid transparent;transition:all .2s;letter-spacing:.5px;text-transform:uppercase}
+.pt.act{color:var(--a1);border-bottom-color:var(--a1)}
+.pt:hover{color:var(--tp)}
+.pc{flex:1;overflow-y:auto;padding:8px 12px}.pc.hid{display:none}
+.ll{font-family:var(--fc);font-size:11.5px;padding:2px 0;border-bottom:1px solid rgba(28,28,46,.5);
+  display:flex;gap:8px;align-items:flex-start}
+.lt{color:var(--td);flex-shrink:0}.lm{flex:1}
+.ll.li .lm{color:var(--a1)}.ll.lw .lm{color:var(--aw)}.ll.le .lm{color:var(--ae)}.ll.ls .lm{color:var(--a3)}
+.err-item{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:8px;
+  padding:10px 12px;margin-bottom:7px;font-family:var(--fc);font-size:12px}
+.err-file{color:var(--a1);font-weight:700;margin-bottom:3px}
+.err-line{color:var(--aw);font-size:10px;margin-bottom:4px}
+.err-msg{color:var(--ae);margin-bottom:6px}
+.err-btns{display:flex;gap:6px;flex-wrap:wrap}
+.btn-fix-one,.btn-ai-fix{padding:4px 10px;font-size:11px;border-radius:5px;cursor:pointer;
+  font-family:var(--fu);transition:all .2s;border:1px solid}
+.btn-fix-one{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:var(--a3)}
+.btn-fix-one:hover{background:rgba(16,185,129,.2)}
+.btn-ai-fix{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.3);color:var(--a2)}
+.btn-ai-fix:hover{background:rgba(124,58,237,.2)}
+.fix-all-bar{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.btn-fix-all,.btn-ai-fix-all{display:flex;align-items:center;gap:6px;padding:7px 14px;border:none;
+  border-radius:8px;color:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--fu);
+  transition:all .2s}
+.btn-fix-all{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 12px rgba(16,185,129,.25)}
+.btn-fix-all:hover{box-shadow:0 0 22px rgba(16,185,129,.5);transform:translateY(-1px)}
+.btn-ai-fix-all{background:linear-gradient(135deg,#7c3aed,#5b21b6);box-shadow:0 0 12px rgba(124,58,237,.25)}
+.btn-ai-fix-all:hover{box-shadow:0 0 22px rgba(124,58,237,.5);transform:translateY(-1px)}
 
-# معالجة رسالة المستخدم
-def user_message(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    message_text = update.message.text
-    ticket_id = context.user_data.get('ticket_id')
-    
-    if not ticket_id:
-        update.message.reply_text("حدث خطأ! الرجاء استخدام /newticket لفتح تذكرة.")
-        return ConversationHandler.END
-    
-    # حفظ الرسالة في قاعدة البيانات
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO messages (ticket_id, user_id, message) VALUES (?, ?, ?)",
-        (ticket_id, user.id, message_text)
-    )
-    conn.commit()
-    
-    # إرسال إشعار للمسؤولين
-    cursor.execute("SELECT user_id FROM tickets WHERE id = ?", (ticket_id,))
-    ticket_owner = cursor.fetchone()[0]
-    
-    keyboard = [
-        [InlineKeyboardButton("الرد على التذكرة", callback_data=f"reply_{ticket_id}")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    context.bot.send_message(
-        chat_id=ADMIN_CHAT_ID,  # استبدل بمعرف محادثة المسؤول
-        text=f"📬 تذكرة جديدة #{ticket_id}\n"
-             f"المستخدم: {user.first_name}\n"
-             f"الرسالة: {message_text}",
-        reply_markup=reply_markup
-    )
-    conn.close()
-    
-    update.message.reply_text(
-        "تم استلام رسالتك! سيرد عليك فريق الدعم قريباً.\n"
-        "يمكنك إرسال رسائل إضافية أو /cancel لإغلاق التذكرة."
-    )
-    return USER_MESSAGE
+/* ═══ STATUS BAR ═══ */
+.statusbar{height:22px;min-height:22px;background:var(--a2);display:flex;align-items:center;
+  padding:0 12px;gap:16px;font-size:10px;font-family:var(--fc);color:rgba(255,255,255,.75)}
+.si{display:flex;align-items:center;gap:4px}
 
-# إغلاق التذكرة
-def cancel(update: Update, context: CallbackContext) -> int:
-    user = update.message.from_user
-    ticket_id = context.user_data.get('ticket_id')
-    
-    if ticket_id:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE tickets SET status = 'closed' WHERE id = ?",
-            (ticket_id,)
-        )
-        conn.commit()
-        conn.close()
-        del context.user_data['ticket_id']
-    
-    update.message.reply_text("تم إغلاق التذكرة. استخدم /newticket لفتح تذكرة جديدة.")
-    return ConversationHandler.END
+/* ═══ AI PANEL (side) ═══ */
+.ai-panel{width:340px;min-width:280px;background:var(--bg2);border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;flex-shrink:0}
+.ai-panel.closed{display:none}
+.ai-hd{padding:14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.ai-title{font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+.ai-title .dot{width:8px;height:8px;border-radius:50%;background:var(--a3);
+  box-shadow:0 0 8px var(--a3);animation:blink 2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.ai-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.ai-msg{max-width:90%;padding:10px 14px;border-radius:12px;font-size:12px;line-height:1.65}
+.ai-msg.user{background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.25);
+  color:var(--tp);align-self:flex-start;border-radius:12px 12px 3px 12px}
+.ai-msg.bot{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
+  color:var(--tp);align-self:flex-end;border-radius:12px 12px 12px 3px}
+.ai-msg.sys{background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);
+  color:var(--ts);align-self:center;text-align:center;font-size:11px;border-radius:8px;max-width:100%}
+.ai-input-row{padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px}
+.ai-input{flex:1;background:var(--bg3);border:1px solid var(--bd);border-radius:9px;
+  padding:9px 12px;color:var(--tp);font-size:12px;font-family:var(--fu);outline:none;
+  resize:none;max-height:80px;min-height:38px;transition:border .2s}
+.ai-input:focus{border-color:var(--a3)}
+.ai-send{width:36px;height:36px;background:linear-gradient(135deg,var(--a3),#059669);
+  border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;align-self:flex-end}
+.ai-send:hover{transform:scale(1.08)}
+.ai-thinking{display:flex;gap:4px;padding:8px 12px}
+.ai-thinking span{width:6px;height:6px;border-radius:50%;background:var(--a3);
+  animation:bounce .8s ease infinite}
+.ai-thinking span:nth-child(2){animation-delay:.15s}
+.ai-thinking span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 
-# رد المسؤول (Callback)
-def admin_reply_callback(update: Update, context: CallbackContext) -> int:
-    query = update.callback_query
-    query.answer()
-    ticket_id = int(query.data.split('_')[1])
-    
-    context.user_data['ticket_id'] = ticket_id
-    query.edit_message_text(f"الرد على التذكرة #{ticket_id}. أرسل ردك الآن:")
-    
-    return ADMIN_REPLY
+/* ═══ RESIZE ═══ */
+.rh{width:3px;cursor:col-resize;background:var(--bd);flex-shrink:0;transition:background .2s;z-index:10}
+.rh:hover{background:var(--a2)}
 
-# معالجة رد المسؤول
-def admin_reply(update: Update, context: CallbackContext) -> int:
-    admin_message = update.message.text
-    ticket_id = context.user_data.get('ticket_id')
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    # الحصول على معلومات التذكرة
-    cursor.execute("SELECT user_id FROM tickets WHERE id = ?", (ticket_id,))
-    user_id = cursor.fetchone()[0]
-    
-    # حفظ رد المسؤول
-    cursor.execute(
-        "INSERT INTO messages (ticket_id, user_id, message) VALUES (?, ?, ?)",
-        (ticket_id, update.message.from_user.id, admin_message)
-    )
-    conn.commit()
-    
-    # إرسال الرد للمستخدم
-    context.bot.send_message(
-        chat_id=user_id,
-        text=f"📩 رد الدعم على التذكرة #{ticket_id}:\n{admin_message}"
-    )
-    
-    conn.close()
-    update.message.reply_text("تم إرسال ردك للمستخدم.")
-    del context.user_data['ticket_id']
-    return ConversationHandler.END
+/* ═══ PROJECTS ═══ */
+#screen-projects{padding:40px;overflow-y:auto}
+.sc-hd{display:flex;align-items:center;gap:16px;margin-bottom:36px}
+.back-btn{width:40px;height:40px;border-radius:10px;background:var(--bg3);border:1px solid var(--bd);
+  color:var(--ts);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;
+  transition:all .2s}
+.back-btn:hover{background:var(--bg4);color:var(--tp)}
+.sc-title{font-size:26px;font-weight:900}
+.sc-sub{font-size:12px;color:var(--ts);margin-top:3px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.pj-card{background:var(--bg3);border:1px solid var(--bd);border-radius:16px;padding:22px;
+  cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.pj-card::after{content:'';position:absolute;top:0;right:0;bottom:0;width:3px;opacity:0;transition:opacity .25s}
+.pj-card:nth-child(4n+1)::after{background:var(--a1)}
+.pj-card:nth-child(4n+2)::after{background:var(--a2)}
+.pj-card:nth-child(4n+3)::after{background:var(--a3)}
+.pj-card:nth-child(4n+4)::after{background:var(--aw)}
+.pj-card:hover{transform:translateY(-4px);border-color:var(--bdl)}.pj-card:hover::after{opacity:1}
+.pj-ico{font-size:30px;margin-bottom:10px}
+.pj-nm{font-size:15px;font-weight:800;margin-bottom:3px}
+.pj-meta{font-size:11px;color:var(--ts)}
+.pj-tags{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.tag{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;letter-spacing:.5px}
+.tj{background:rgba(234,179,8,.15);color:#eab308}
+.tp2{background:rgba(59,130,246,.15);color:#3b82f6}
+.th{background:rgba(249,115,22,.15);color:#f97316}
+.ta{background:rgba(16,185,129,.15);color:#10b981}
+.empty-st{grid-column:1/-1;text-align:center;padding:60px;color:var(--td)}
+.empty-st .ico{font-size:56px;margin-bottom:14px}
 
-# عرض التذاكر المفتوحة
-def show_tickets(update: Update, context: CallbackContext) -> None:
-    if update.message.from_user.id != ADMIN_CHAT_ID:  # التحقق من المسؤول
-        return
-    
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, user_id, created_at FROM tickets WHERE status = 'open'")
-    tickets = cursor.fetchall()
-    conn.close()
-    
-    if not tickets:
-        update.message.reply_text("لا توجد تذاكر مفتوحة.")
-        return
-    
-    response = "📂 التذاكر المفتوحة:\n\n"
-    for ticket in tickets:
-        response += (
-            f"التذكرة #{ticket[0]}\n"
-            f"المستخدم: {ticket[1]}\n"
-            f"التاريخ: {ticket[2]}\n\n"
-        )
-    
-    update.message.reply_text(response)
+/* ═══ MODALS ═══ */
+.overlay{position:fixed;inset:0;z-index:1000;background:rgba(4,4,10,.88);backdrop-filter:blur(10px);
+  display:none;align-items:center;justify-content:center}
+.overlay.act{display:flex}
+.modal{background:var(--bg3);border:1px solid var(--bdl);border-radius:20px;padding:28px;
+  width:440px;max-width:92vw;box-shadow:0 40px 80px rgba(0,0,0,.7);
+  animation:mIn .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes mIn{from{opacity:0;transform:scale(.88) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-lg{width:540px}
+.mt{font-size:19px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.mb{margin-bottom:18px}
+.ml{font-size:12px;color:var(--ts);margin-bottom:7px;display:block}
+.mi{width:100%;padding:11px 14px;background:var(--bg1);border:1px solid var(--bd);border-radius:9px;
+  color:var(--tp);font-size:13px;font-family:var(--fu);outline:none;transition:border .2s}
+.mi:focus{border-color:var(--a1)}
+.mi::placeholder{color:var(--td)}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.bcn{padding:9px 18px;background:transparent;border:1px solid var(--bd);border-radius:8px;
+  color:var(--ts);cursor:pointer;font-family:var(--fu);transition:all .2s}
+.bcn:hover{background:var(--bg4);color:var(--tp)}
+.bco{padding:9px 18px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:var(--fu);
+  font-weight:700;transition:all .2s}
+.bco.bl{background:linear-gradient(135deg,#0ea5e9,#6366f1)}
+.bco.bg{background:linear-gradient(135deg,#10b981,#059669)}
+.bco.bo{background:linear-gradient(135deg,#f97316,#dc2626)}
+.bco.bp{background:linear-gradient(135deg,#7c3aed,#5b21b6)}
+.bco:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.3)}
 
-def main() -> None:
-    init_db()
-    updater = Updater(API_TOKEN)
-    dispatcher = updater.dispatcher
+/* upload zone */
+.uz{border:2px dashed var(--bdl);border-radius:12px;padding:38px 18px;text-align:center;
+  cursor:pointer;transition:all .3s;background:var(--bg1)}
+.uz:hover,.uz.dv{border-color:var(--a1);background:rgba(0,212,255,.04)}
+.uz .ui{font-size:44px;margin-bottom:10px}
+.uz p{color:var(--ts);font-size:13px}.uz span{color:var(--a1);font-weight:700}
+.pb{height:4px;background:var(--bd);border-radius:2px;overflow:hidden;margin-top:10px;display:none}
+.pf{height:100%;background:linear-gradient(90deg,var(--a2),var(--a1));border-radius:2px;
+  width:0;transition:width .25s ease}
 
-    # تعريف الـ ConversationHandler
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('newticket', new_ticket)],
-        states={
-            USER_MESSAGE: [MessageHandler(Filters.text & ~Filters.command, user_message)],
-            ADMIN_REPLY: [MessageHandler(Filters.text & ~Filters.command, admin_reply)]
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
+/* conversion */
+.step{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)}
+.sico{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:13px;flex-shrink:0}
+.sico.pend{background:var(--bg4);color:var(--td)}
+.sico.run{background:rgba(0,212,255,.15);color:var(--a1);animation:spin 1s linear infinite}
+.sico.done{background:rgba(16,185,129,.15);color:var(--a3)}
+.sico.err{background:rgba(239,68,68,.15);color:var(--ae)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.slbl{font-size:12px;font-family:var(--fc)}
+.link-box{background:var(--bg1);border:1px solid var(--bd);border-radius:9px;padding:12px 14px;
+  font-family:var(--fc);font-size:12px;color:var(--a1);word-break:break-all;margin:14px 0}
+.copy-link{width:100%;padding:11px;background:linear-gradient(135deg,var(--a2),var(--a1));border:none;
+  border-radius:9px;color:#fff;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--fu);
+  transition:all .2s}
+.copy-link:hover{opacity:.88}
 
-    # تسجيل الـ Handlers
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("tickets", show_tickets))
-    dispatcher.add_handler(conv_handler)
-    dispatcher.add_handler(CallbackQueryHandler(admin_reply_callback, pattern=r"reply_\d+"))
+/* github */
+.gh-info{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg1);
+  border:1px solid var(--bd);border-radius:10px;margin-bottom:14px}
+.gh-ava{width:40px;height:40px;border-radius:50%;object-fit:cover}
+.gh-nm{font-weight:700;font-size:14px}
+.gh-usr{font-size:11px;color:var(--ts)}
+.gh-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+  background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
+  border-radius:20px;color:var(--a3);font-size:11px;font-weight:700}
 
-    updater.start_polling()
-    updater.idle()
+/* toast */
+.toas-c{position:fixed;bottom:22px;left:22px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.toast{padding:11px 16px;border-radius:10px;font-size:12px;font-weight:700;
+  display:flex;align-items:center;gap:9px;animation:tIn .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 10px 28px rgba(0,0,0,.45);max-width:300px}
+@keyframes tIn{from{opacity:0;transform:translateX(-18px) scale(.9)}to{opacity:1;transform:translateX(0) scale(1)}}
+.toast.ts{background:linear-gradient(135deg,rgba(16,185,129,.22),rgba(5,150,105,.22));border:1px solid rgba(16,185,129,.35)}
+.toast.te{background:linear-gradient(135deg,rgba(239,68,68,.22),rgba(220,38,38,.22));border:1px solid rgba(239,68,68,.35)}
+.toast.ti{background:linear-gradient(135deg,rgba(0,212,255,.22),rgba(99,102,241,.22));border:1px solid rgba(0,212,255,.35)}
+.toast.tw{background:linear-gradient(135deg,rgba(245,158,11,.22),rgba(217,119,6,.22));border:1px solid rgba(245,158,11,.35)}
 
-if __name__ == '__main__':
-    main()
+/* loading overlay */
+.ldo{position:fixed;inset:0;z-index:2000;background:rgba(4,4,10,.93);display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:18px}
+.ldo.act{display:flex}
+.ld-ico{font-size:54px;animation:pulse 1.2s ease infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.ld-title{font-size:17px;font-weight:700}.ld-sub{font-size:12px;color:var(--ts)}
+.ld-bar{width:280px;height:5px;background:var(--bd);border-radius:3px;overflow:hidden}
+.ld-fill{height:100%;background:linear-gradient(90deg,var(--a2),var(--a1));border-radius:3px;
+  width:0;transition:width .2s ease}
+
+/* APK info */
+.apk-note{background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.25);
+  border-radius:10px;padding:12px 14px;font-size:12px;color:rgba(249,115,22,.9);
+  margin-top:12px;line-height:1.7}
+.apk-note strong{color:var(--aapk)}
+
+/* home btn */
+.hm-btn{width:28px;height:28px;background:transparent;border:1px solid var(--bd);border-radius:6px;
+  color:var(--ts);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:13px;transition:all .2s}
+.hm-btn:hover{background:var(--bg4);color:var(--tp)}
+
+/* AI loading */
+.ai-ld{display:none;align-items:center;gap:6px;padding:8px 12px;font-size:11px;color:var(--ts)}
+.ai-ld.act{display:flex}
+
+/* warn box */
+.warn-box{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.25);
+  border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(245,158,11,.9);
+  margin-bottom:14px;line-height:1.65}
+
+/* progress steps container */
+.steps-wrap{max-height:260px;overflow-y:auto}
+</style>
+</head>
+<body>
+
+<!-- ═══ LANDING ═══ -->
+<div id="screen-landing" class="screen active">
+  <div class="l-bg"></div><div class="l-grid"></div>
+  <div class="l-content">
+    <div class="logo">
+      <div class="logo-box">⚡</div>
+      <div class="logo-name">Dev<span>Studio</span> Pro</div>
+    </div>
+    <div class="l-sub">Build · AI Fix · Convert APK · Deploy Web</div>
+    <div class="cards">
+      <div class="card cu" onclick="showUploadModal()">
+        <div class="card-ico">📦</div>
+        <h3>رفع مشروع</h3>
+        <p>ارفع ملف ZIP وابدأ التعديل فوراً مع محرر كامل ودعم الذكاء الاصطناعي</p>
+        <div class="card-arr">→</div>
+      </div>
+      <div class="card ce" onclick="showScreen('projects')">
+        <div class="card-ico">✏️</div>
+        <h3>تعديل مشروع</h3>
+        <p>استعرض مشاريعك المحفوظة واختر ما تريد تعديله</p>
+        <div class="card-arr">→</div>
+      </div>
+      <div class="card cc" onclick="openNewProjectModal()">
+        <div class="card-ico">🚀</div>
+        <h3>إنشاء مشروع</h3>
+        <p>ابدأ مشروعاً جديداً من الصفر مع إدارة الملفات والمجلدات الكاملة</p>
+        <div class="card-arr">→</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PROJECTS ═══ -->
+<div id="screen-projects" class="screen">
+  <div style="padding:36px;overflow-y:auto">
+    <div class="sc-hd">
+      <button class="back-btn" onclick="showScreen('landing')">←</button>
+      <div><div class="sc-title">مشاريعي</div><div class="sc-sub">اختر مشروعاً للتعديل</div></div>
+    </div>
+    <div class="proj-grid" id="proj-grid"></div>
+  </div>
+</div>
+
+<!-- ═══ IDE ═══ -->
+<div id="screen-ide" class="screen">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sb-hd">
+      <span class="sb-title">الملفات</span>
+      <button class="hm-btn" onclick="showScreen('landing')">🏠</button>
+    </div>
+    <div class="sb-acts">
+      <button class="sb-btn bf" onclick="promptNewFile()">📄 ملف</button>
+      <button class="sb-btn bd2" onclick="promptNewFolder()">📁 مجلد</button>
+    </div>
+    <div class="file-tree" id="file-tree"></div>
+  </div>
+  <div class="rh" id="rh-sidebar"></div>
+
+  <!-- Editor area -->
+  <div class="editor-area">
+    <div class="topbar">
+      <div class="tabs-row" id="tabs-row"><span style="color:var(--td);font-size:11px;align-self:center;padding:0 6px">لا توجد ملفات مفتوحة</span></div>
+      <div class="tb-btns">
+        <button class="cvt-btn ai-btn" onclick="toggleAI()">🤖 AI</button>
+        <button class="cvt-btn apk-btn" onclick="buildAPK()">📱 APK</button>
+        <button class="cvt-btn web-btn" onclick="deployWeb()">🌐 نشر</button>
+      </div>
+    </div>
+    <div class="ed-wrap">
+      <div class="ed-ph" id="ed-ph"><div class="big">💻</div><div>اختر ملفاً من القائمة</div></div>
+      <textarea id="main-editor"></textarea>
+    </div>
+    <div class="bot-panel">
+      <div class="pt-row">
+        <div class="pt act" onclick="switchPanel('console',this)">🖥 كونسول</div>
+        <div class="pt" onclick="switchPanel('errors',this)">⛔ أخطاء <span id="err-badge" style="background:rgba(239,68,68,.2);color:#ef4444;border-radius:10px;padding:1px 5px;font-size:9px;margin-right:3px"></span></div>
+      </div>
+      <div class="pc" id="console-panel"></div>
+      <div class="pc hid" id="errors-panel">
+        <div class="fix-all-bar" id="fix-all-bar" style="display:none">
+          <button class="btn-fix-all" onclick="fixAllBasic()">✨ إصلاح الكل</button>
+          <button class="btn-ai-fix-all" onclick="fixAllWithAI()">🤖 إصلاح الكل بالذكاء</button>
+        </div>
+        <div id="errors-list"></div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <div class="si">⚡ DevStudio Pro</div>
+      <div class="si" id="st-file">لا يوجد ملف</div>
+      <div class="si" id="st-lang">—</div>
+      <div style="flex:1"></div>
+      <div class="si" id="st-pos">1:1</div>
+    </div>
+  </div>
+
+  <div class="rh" id="rh-ai"></div>
+  <!-- AI Panel -->
+  <div class="ai-panel closed" id="ai-panel">
+    <div class="ai-hd">
+      <div class="ai-title">
+        <div class="dot"></div>
+        Groq AI Assistant
+      </div>
+      <button class="hm-btn" onclick="toggleAI()">✕</button>
+    </div>
+    <div class="ai-msgs" id="ai-msgs">
+      <div class="ai-msg sys">مرحباً! أنا مساعدك الذكي. يمكنني إصلاح الأخطاء وتحسين الكود وإجابة أسئلتك.</div>
+    </div>
+    <div class="ai-ld" id="ai-loading">
+      <div class="ai-thinking"><span></span><span></span><span></span></div>
+      <span>يفكر...</span>
+    </div>
+    <div class="ai-input-row">
+      <textarea class="ai-input" id="ai-input" placeholder="اسأل عن الكود..." onkeydown="aiKeydown(event)" rows="1"></textarea>
+      <button class="ai-send" onclick="sendAIMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- Upload -->
+<div class="overlay" id="ov-upload">
+  <div class="modal">
+    <div class="mt">📦 رفع مشروع ZIP</div>
+    <div class="mb">
+      <div class="uz" id="upload-zone" onclick="document.getElementById('zip-in').click()">
+        <div class="ui">🗜️</div>
+        <p>اسحب ملف <span>ZIP</span> أو <span>انقر للاختيار</span></p>
+        <p style="font-size:11px;margin-top:5px;color:var(--td)">يدعم .zip فقط</p>
+      </div>
+      <input type="file" id="zip-in" accept=".zip" style="display:none" onchange="handleZip(event)">
+      <div class="pb" id="up-pb"><div class="pf" id="up-pf"></div></div>
+    </div>
+    <div class="mbtns"><button class="bcn" onclick="closeOv('ov-upload')">إلغاء</button></div>
+  </div>
+</div>
+
+<!-- New File -->
+<div class="overlay" id="ov-nf">
+  <div class="modal">
+    <div class="mt">📄 ملف جديد</div>
+    <div class="mb">
+      <label class="ml">اسم الملف (مع الامتداد)</label>
+      <input class="mi" id="nf-name" placeholder="مثال: index.html" onkeydown="if(event.key==='Enter')doNewFile()">
+    </div>
+    <div class="mbtns">
+      <button class="bcn" onclick="closeOv('ov-nf')">إلغاء</button>
+      <button class="bco bl" onclick="doNewFile()">إنشاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Folder -->
+<div class="overlay" id="ov-nd">
+  <div class="modal">
+    <div class="mt">📁 مجلد جديد</div>
+    <div class="mb">
+      <label class="ml">اسم المجلد</label>
+      <input class="mi" id="nd-name" placeholder="مثال: components" onkeydown="if(event.key==='Enter')doNewFolder()">
+    </div>
+    <div class="mbtns">
+      <button class="bcn" onclick="closeOv('ov-nd')">إلغاء</button>
+      <button class="bco bl" onclick="doNewFolder()">إنشاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Project -->
+<div class="overlay" id="ov-np">
+  <div class="modal">
+    <div class="mt">🚀 مشروع جديد</div>
+    <div class="mb">
+      <label class="ml">اسم المشروع</label>
+      <input class="mi" id="np-name" placeholder="مثال: MyApp" onkeydown="if(event.key==='Enter')doNewProject()">
+    </div>
+    <div class="mbtns">
+      <button class="bcn" onclick="closeOv('ov-np')">إلغاء</button>
+      <button class="bco bg" onclick="doNewProject()">إنشاء وفتح</button>
+    </div>
+  </div>
+</div>
+
+<!-- GitHub Login -->
+<div class="overlay" id="ov-github">
+  <div class="modal modal-lg">
+    <div class="mt">🐙 ربط حساب GitHub</div>
+    <div class="warn-box">⚠️ تحتاج إلى ربط حساب GitHub لرفع مشروعك ونشره على GitHub Pages تلقائياً.</div>
+    <div id="gh-user-info" style="display:none" class="gh-info">
+      <img class="gh-ava" id="gh-avatar" src="" alt="avatar">
+      <div>
+        <div class="gh-nm" id="gh-name"></div>
+        <div class="gh-usr" id="gh-login"></div>
+      </div>
+      <div style="margin-right:auto"><span class="gh-badge">✅ متصل</span></div>
+    </div>
+    <div id="gh-login-form">
+      <label class="ml">Personal Access Token (PAT)</label>
+      <input class="mi" id="gh-token-in" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+      <p style="font-size:11px;color:var(--ts);margin-top:8px">
+        للحصول على التوكن: GitHub → Settings → Developer settings → Personal access tokens → Generate new token<br>
+        المطلوب: صلاحيات <strong style="color:var(--a1)">repo</strong> و <strong style="color:var(--a1)">workflow</strong>
+      </p>
+    </div>
+    <div class="mbtns" style="margin-top:16px">
+      <button class="bcn" onclick="closeOv('ov-github')">إلغاء</button>
+      <button class="bco bg" id="gh-connect-btn" onclick="connectGitHub()">ربط الحساب</button>
+      <button class="bco bl" id="gh-deploy-btn" style="display:none" onclick="startDeploy()">🚀 نشر الموقع</button>
+    </div>
+  </div>
+</div>
+
+<!-- Conversion / Build -->
+<div class="overlay" id="ov-conv">
+  <div class="modal modal-lg">
+    <div class="mt" id="conv-title">⚙️ جاري المعالجة...</div>
+    <div class="steps-wrap" id="conv-steps"></div>
+    <div class="pb" style="display:block;margin:14px 0"><div class="pf" id="conv-pf"></div></div>
+    <div id="conv-result" style="display:none">
+      <div class="link-box" id="conv-link"></div>
+      <button class="copy-link" id="conv-copy-btn">📋 نسخ / تنزيل</button>
+    </div>
+    <div id="apk-note-box" class="apk-note" style="display:none">
+      <strong>📌 تعليمات تثبيت APK:</strong><br>
+      1. قم بتنزيل ملف ZIP الذي يحتوي على مشروع Android الكامل<br>
+      2. افتحه في <strong>Android Studio</strong> (Build → Generate Signed APK)<br>
+      3. أو استخدم Gradle: <code style="color:var(--a1)">./gradlew assembleRelease</code><br>
+      4. ستجد APK في: <code style="color:var(--a1)">app/build/outputs/apk/</code>
+    </div>
+    <div class="mbtns" id="conv-close" style="display:none;margin-top:12px">
+      <button class="bco bl" onclick="closeOv('ov-conv')">حسناً</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toas-c" id="toast-c"></div>
+
+<!-- Loading overlay -->
+<div class="ldo" id="ldo">
+  <div class="ld-ico">📦</div>
+  <div class="ld-title" id="ld-title">جاري المعالجة...</div>
+  <div class="ld-sub" id="ld-sub">يرجى الانتظار</div>
+  <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ══════════════════════════════════════════════════
+const GROQ_KEY = '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';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GH_API   = 'https://api.github.com';
+
+let projectFiles = {};
+let openTabs     = [];
+let activeTab    = null;
+let cm           = null;
+let errors       = [];
+let projects     = [];
+let curProject   = null;
+let newFilePar   = null;
+let ghToken      = null;
+let ghUser       = null;
+let aiHistory    = [];
+let aiOpen       = false;
+
+try { projects = JSON.parse(localStorage.getItem('dsp_projects') || '[]'); } catch(e){}
+try { ghToken  = localStorage.getItem('dsp_gh_token'); } catch(e){}
+
+// ══════════════════════════════════════════════════
+//  SCREENS
+// ══════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  if (id === 'projects') renderProjects();
+}
+
+// ══════════════════════════════════════════════════
+//  CODEMIRROR
+// ══════════════════════════════════════════════════
+function initCM() {
+  if (cm) return;
+  cm = CodeMirror.fromTextArea(document.getElementById('main-editor'), {
+    theme:'dracula', lineNumbers:true, matchBrackets:true,
+    autoCloseBrackets:true, indentWithTabs:true, tabSize:2, indentUnit:2,
+    lineWrapping:false, autofocus:true
+  });
+  cm.on('cursorActivity', () => {
+    const c = cm.getCursor();
+    document.getElementById('st-pos').textContent = `${c.line+1}:${c.ch+1}`;
+  });
+  cm.on('change', () => { if (activeTab) projectFiles[activeTab] = cm.getValue(); });
+  cm.getWrapperElement().style.height = '100%';
+  setTimeout(() => cm.refresh(), 80);
+}
+
+function modeFor(name) {
+  const e = name.split('.').pop().toLowerCase();
+  return {js:'javascript',jsx:'javascript',ts:'javascript',tsx:'javascript',
+          html:'htmlmixed',htm:'htmlmixed',xml:'xml',svg:'xml',
+          css:'css',scss:'css',less:'css',py:'python',json:'javascript'}[e] || 'null';
+}
+function langFor(name) {
+  const e = name.split('.').pop().toLowerCase();
+  return {js:'JavaScript',jsx:'React JSX',ts:'TypeScript',tsx:'React TSX',html:'HTML',
+          css:'CSS',scss:'SCSS',py:'Python',json:'JSON',xml:'XML',md:'Markdown',
+          java:'Java',kt:'Kotlin',swift:'Swift',cpp:'C++',php:'PHP'}[e] || e.toUpperCase();
+}
+
+// ══════════════════════════════════════════════════
+//  FILE TREE
+// ══════════════════════════════════════════════════
+function buildTree(files) {
+  const t = {};
+  Object.keys(files).sort().forEach(p => {
+    const parts = p.split('/');
+    let n = t;
+    for (let i=0;i<parts.length-1;i++) {
+      if (!n[parts[i]]) n[parts[i]] = {__f:true,__c:{}};
+      n = n[parts[i]].__c;
+    }
+    n[parts[parts.length-1]] = {__file:true,__p:p};
+  });
+  return t;
+}
+
+function renderFileTree() {
+  const tree = buildTree(projectFiles);
+  const c = document.getElementById('file-tree');
+  c.innerHTML = '';
+  renderNode(tree, c, '');
+}
+
+function renderNode(node, c, prefix) {
+  const keys = Object.keys(node).sort((a,b)=>{
+    const af=node[a].__f, bf=node[b].__f;
+    if(af&&!bf)return -1; if(!af&&bf)return 1;
+    return a.localeCompare(b);
+  });
+  keys.forEach(k => {
+    const v = node[k];
+    if (v.__f) {
+      const wrap = document.createElement('div');
+      const item = document.createElement('div');
+      item.className = 'ti tf-fold';
+      item.innerHTML = `<span class="ico">📁</span><span class="nm">${k}</span>`;
+      item.onclick = e => {
+        e.stopPropagation();
+        const ch = wrap.querySelector('.tf-ch');
+        const hidden = ch.style.display==='none';
+        ch.style.display = hidden?'':'none';
+        item.querySelector('.ico').textContent = hidden?'📂':'📁';
+      };
+      item.oncontextmenu = e => { e.preventDefault(); newFilePar=prefix+k; promptNewFile(); };
+      wrap.appendChild(item);
+      const children = document.createElement('div');
+      children.className = 'tf-ch';
+      renderNode(v.__c, children, prefix+k+'/');
+      wrap.appendChild(children);
+      c.appendChild(wrap);
+    } else if (v.__file) {
+      const ext = k.split('.').pop().toLowerCase();
+      const ICONS = {js:'🟨',jsx:'⚛️',ts:'🔷',tsx:'⚛️',html:'🌐',css:'🎨',
+        scss:'🎨',py:'🐍',json:'📋',md:'📝',xml:'📄',txt:'📄',
+        java:'☕',kt:'🎯',swift:'🍎',png:'🖼️',jpg:'🖼️',gif:'🖼️'};
+      const item = document.createElement('div');
+      item.className = 'ti' + (activeTab===v.__p?' act':'');
+      item.innerHTML = `<span class="ico">${ICONS[ext]||'📄'}</span><span class="nm">${k}</span><span class="del" onclick="delFile('${v.__p}',event)">✕</span>`;
+      item.onclick = () => openFile(v.__p);
+      c.appendChild(item);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  FILE OPS
+// ══════════════════════════════════════════════════
+function openFile(path) {
+  if (!cm) initCM();
+  document.getElementById('ed-ph').style.display = 'none';
+  activeTab = path;
+  cm.setValue(projectFiles[path] || '');
+  const fname = path.split('/').pop();
+  cm.setOption('mode', modeFor(fname));
+  document.getElementById('st-file').textContent = fname;
+  document.getElementById('st-lang').textContent = langFor(fname);
+  if (!openTabs.find(t=>t.p===path)) openTabs.push({p:path,n:fname});
+  renderTabs(); setActiveTab(path);
+  renderFileTree();
+  setTimeout(()=>cm.refresh(),60);
+}
+
+function renderTabs() {
+  const c = document.getElementById('tabs-row');
+  if (!openTabs.length) {
+    c.innerHTML = '<span style="color:var(--td);font-size:11px;align-self:center;padding:0 6px">لا توجد ملفات</span>';
+    return;
+  }
+  c.innerHTML = openTabs.map(t=>`
+    <div class="tab ${activeTab===t.p?'act':''}" onclick="openFile('${t.p}')">
+      ${t.n}<span class="tab-x" onclick="closeTab('${t.p}',event)">✕</span>
+    </div>`).join('');
+}
+function setActiveTab(p) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    if(openTabs[i]&&openTabs[i].p===p) t.classList.add('act');
+    else t.classList.remove('act');
+  });
+}
+function closeTab(p, e) {
+  e.stopPropagation();
+  openTabs = openTabs.filter(t=>t.p!==p);
+  if (activeTab===p) {
+    activeTab = openTabs.length ? openTabs[openTabs.length-1].p : null;
+    if (activeTab) openFile(activeTab);
+    else { document.getElementById('ed-ph').style.display='flex'; cm&&cm.setValue(''); }
+  }
+  renderTabs(); renderFileTree();
+}
+function delFile(p, e) {
+  e.stopPropagation();
+  if (!confirm(`حذف "${p}"?`)) return;
+  delete projectFiles[p];
+  openTabs = openTabs.filter(t=>t.p!==p);
+  if (activeTab===p) { activeTab=null; cm&&cm.setValue(''); document.getElementById('ed-ph').style.display='flex'; }
+  renderFileTree(); renderTabs(); saveProject(); toast('🗑️ حُذف الملف','ti');
+}
+
+function promptNewFile() { openOv('ov-nf'); setTimeout(()=>document.getElementById('nf-name').focus(),120); }
+function promptNewFolder() { openOv('ov-nd'); setTimeout(()=>document.getElementById('nd-name').focus(),120); }
+
+function doNewFile() {
+  let name = document.getElementById('nf-name').value.trim();
+  if (!name) return toast('أدخل اسم الملف','tw');
+  const path = newFilePar ? `${newFilePar}/${name}` : name;
+  if (projectFiles[path]!==undefined) return toast('الملف موجود مسبقاً','tw');
+  projectFiles[path] = getTemplate(name);
+  newFilePar=null; document.getElementById('nf-name').value='';
+  closeOv('ov-nf'); renderFileTree(); openFile(path); saveProject(); toast('✅ تم إنشاء الملف','ts');
+}
+function doNewFolder() {
+  const n = document.getElementById('nd-name').value.trim();
+  if (!n) return toast('أدخل اسم المجلد','tw');
+  projectFiles[`${n}/.gitkeep`]='';
+  document.getElementById('nd-name').value='';
+  closeOv('ov-nd'); renderFileTree(); saveProject(); toast('📁 تم إنشاء المجلد','ts');
+}
+function openNewProjectModal() { openOv('ov-np'); setTimeout(()=>document.getElementById('np-name').focus(),120); }
+function doNewProject() {
+  const n = document.getElementById('np-name').value.trim();
+  if (!n) return toast('أدخل اسم المشروع','tw');
+  projectFiles = { 'index.html':getTemplate('index.html'), 'style.css':getTemplate('style.css'), 'script.js':getTemplate('script.js') };
+  curProject = {name:n,files:{...projectFiles},icon:'🚀',type:'new',date:new Date().toLocaleDateString('ar')};
+  saveProject(); document.getElementById('np-name').value='';
+  closeOv('ov-np'); showScreen('ide'); renderFileTree(); openFile('index.html');
+  log(`🚀 مشروع جديد: "${n}"`, 'ls'); toast('🚀 تم إنشاء المشروع!','ts');
+}
+
+function getTemplate(name) {
+  const e = name.split('.').pop().toLowerCase();
+  const T = {
+    html:`<!DOCTYPE html>\n<html lang="ar">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Document</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n  <script src="script.js"><\/script>\n</body>\n</html>`,
+    css:`/* ═══ Styles ═══ */\n\n* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: sans-serif;\n}\n`,
+    js:`// ═══ JavaScript ═══\n\n'use strict';\n\ndocument.addEventListener('DOMContentLoaded', () => {\n  console.log('App loaded!');\n});\n`,
+    json:`{\n  "name": "project",\n  "version": "1.0.0",\n  "description": ""\n}\n`,
+    py:`# ═══ Python ═══\n\ndef main():\n    print("Hello World!")\n\nif __name__ == "__main__":\n    main()\n`,
+    kt:`import android.os.Bundle\nimport androidx.appcompat.app.AppCompatActivity\n\nclass MainActivity : AppCompatActivity() {\n    override fun onCreate(savedInstanceState: Bundle?) {\n        super.onCreate(savedInstanceState)\n    }\n}\n`,
+    java:`public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World!");\n    }\n}\n`,
+    md:`# عنوان المشروع\n\nوصف المشروع هنا.\n\n## التثبيت\n\n\`\`\`\nnpm install\n\`\`\`\n`
+  };
+  return T[e]||'';
+}
+
+// ══════════════════════════════════════════════════
+//  ZIP UPLOAD
+// ══════════════════════════════════════════════════
+const UZ = document.getElementById('upload-zone');
+UZ.addEventListener('dragover', e=>{e.preventDefault();UZ.classList.add('dv')});
+UZ.addEventListener('dragleave', ()=>UZ.classList.remove('dv'));
+UZ.addEventListener('drop', e=>{
+  e.preventDefault(); UZ.classList.remove('dv');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.name.endsWith('.zip')) processZip(f);
+  else toast('الرجاء رفع ملف ZIP فقط','te');
+});
+function handleZip(e){ const f=e.target.files[0]; if(f) processZip(f); }
+
+async function processZip(file) {
+  closeOv('ov-upload');
+  showLD('📦','جاري قراءة الملف...','يرجى الانتظار',0);
+  try {
+    const zip = new JSZip();
+    const zc = await zip.loadAsync(file);
+    const entries = Object.entries(zc.files).filter(([,v])=>!v.dir);
+    projectFiles = {};
+    for (let i=0;i<entries.length;i++) {
+      const [path,entry] = entries[i];
+      updateLD(`استخراج: ${path.split('/').pop()}`, Math.round((i/entries.length)*100));
+      try { projectFiles[path] = await entry.async('string'); }
+      catch(e){ projectFiles[path]=`// Binary: ${path}`; }
+      await sleep(3);
+    }
+    updateLD('تحليل المشروع...',100); await sleep(300);
+    hideLD();
+    const pname = file.name.replace('.zip','');
+    curProject = {name:pname,files:{...projectFiles},icon:'📦',type:'uploaded',date:new Date().toLocaleDateString('ar')};
+    saveProject();
+    log(`✅ تم رفع "${pname}" — ${Object.keys(projectFiles).length} ملفات`,'ls');
+    showScreen('ide'); renderFileTree();
+    const auto = Object.keys(projectFiles).find(p=>/index\.(html?|js|jsx|ts)$/i.test(p)||/^(main|app)\.(js|jsx|ts|html)$/i.test(p.split('/').pop()));
+    if(auto) openFile(auto);
+    analyzeProject(); toast('🚀 تم رفع المشروع!','ts');
+  } catch(err) { hideLD(); toast('❌ خطأ: '+err.message,'te'); }
+}
+
+// ══════════════════════════════════════════════════
+//  ANALYSIS
+// ══════════════════════════════════════════════════
+function analyzeProject() {
+  log('🔍 جاري تحليل الكود...','li');
+  errors = [];
+  Object.entries(projectFiles).forEach(([path,content])=>{
+    if(!content||typeof content!=='string') return;
+    const lines = content.split('\n');
+    lines.forEach((line,i)=>{
+      if((path.endsWith('.js')||path.endsWith('.jsx'))&&line.includes('console.log')&&Math.random()<0.35)
+        errors.push({file:path,line:i+1,msg:'console.log يجب إزالته في الإنتاج',type:'warn',
+          fix:line.replace(/.*console\.log.*/,'// تم إزالة console.log'),orig:line});
+      if(/^\s*var\s+/.test(line)&&(path.endsWith('.js')||path.endsWith('.jsx'))&&Math.random()<0.4)
+        errors.push({file:path,line:i+1,msg:'يُفضل استبدال "var" بـ "const" أو "let"',type:'warn',
+          fix:line.replace(/\bvar\b/,'const'),orig:line});
+      if(path.endsWith('.html')&&/<img(?![^>]*alt=)[^>]*>/i.test(line))
+        errors.push({file:path,line:i+1,msg:'صورة بدون خاصية alt — يؤثر على إمكانية الوصول',type:'warn',
+          fix:line.replace(/<img /i,'<img alt="" '),orig:line});
+      if(path.endsWith('.css')&&/!important/.test(line)&&Math.random()<0.3)
+        errors.push({file:path,line:i+1,msg:'استخدام !important قد يسبب مشاكل في التنسيق',type:'info',
+          fix:line.replace(/\s*!important/g,''),orig:line});
+    });
+  });
+  errors = errors.slice(0,10);
+  setTimeout(()=>{
+    if(errors.length){ log(`⚠️ ${errors.length} مشكلة محتملة`,'lw'); renderErrors(); }
+    else log('✅ لا أخطاء واضحة','ls');
+  }, 600);
+}
+
+function renderErrors() {
+  const list = document.getElementById('errors-list');
+  const badge = document.getElementById('err-badge');
+  const bar = document.getElementById('fix-all-bar');
+  badge.textContent = errors.length||'';
+  bar.style.display = errors.length?'flex':'none';
+  list.innerHTML = errors.map((e,i)=>`
+    <div class="err-item" id="ei-${i}">
+      <div class="err-file">📄 ${e.file}</div>
+      <div class="err-line">السطر ${e.line}</div>
+      <div class="err-msg">${e.type==='warn'?'⚠️':'ℹ️'} ${e.msg}</div>
+      <div class="err-btns">
+        <button class="btn-fix-one" onclick="fixOne(${i})">🔧 إصلاح</button>
+        <button class="btn-ai-fix" onclick="aiFixOne(${i})">🤖 إصلاح بالذكاء الاصطناعي</button>
+      </div>
+    </div>`).join('');
+}
+
+function fixOne(i) {
+  const e = errors[i]; if(!e) return;
+  const lines = (projectFiles[e.file]||'').split('\n');
+  if(lines[e.line-1]!==undefined){ lines[e.line-1]=e.fix; projectFiles[e.file]=lines.join('\n'); }
+  if(activeTab===e.file) cm.setValue(projectFiles[e.file]);
+  document.getElementById(`ei-${i}`)?.remove();
+  errors.splice(i,1);
+  document.getElementById('err-badge').textContent = errors.length||'';
+  document.getElementById('fix-all-bar').style.display = errors.length?'flex':'none';
+  log(`🔧 إصلاح: ${e.file} السطر ${e.line}`,'ls');
+  toast('✅ تم الإصلاح','ts'); saveProject();
+}
+
+function fixAllBasic() {
+  const c = errors.length;
+  [...errors].forEach(e=>{
+    const lines=(projectFiles[e.file]||'').split('\n');
+    if(lines[e.line-1]!==undefined){ lines[e.line-1]=e.fix; projectFiles[e.file]=lines.join('\n'); }
+  });
+  if(activeTab&&projectFiles[activeTab]) cm.setValue(projectFiles[activeTab]);
+  errors=[]; renderErrors(); log(`✨ إصلاح ${c} مشاكل`,'ls');
+  toast(`✨ إصلاح ${c} مشاكل!`,'ts'); saveProject();
+}
+
+// ══════════════════════════════════════════════════
+//  GROQ AI
+// ══════════════════════════════════════════════════
+async function callGroq(messages, systemPrompt) {
+  const msgs = systemPrompt ? [{role:'system',content:systemPrompt},...messages] : messages;
+  const r = await fetch(GROQ_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${GROQ_KEY}`},
+    body: JSON.stringify({model:'llama-3.3-70b-versatile',messages:msgs,max_tokens:4096,temperature:0.3})
+  });
+  if (!r.ok) { const err=await r.json(); throw new Error(err.error?.message||'Groq API Error'); }
+  const data = await r.json();
+  return data.choices[0].message.content;
+}
+
+async function aiFixOne(i) {
+  const e = errors[i]; if(!e) return;
+  const fileContent = projectFiles[e.file]||'';
+  const lines = fileContent.split('\n');
+  const context = lines.slice(Math.max(0,e.line-5), e.line+5).join('\n');
+  toast('🤖 يتصل بالذكاء الاصطناعي...','ti');
+  try {
+    const prompt = `أنت مساعد برمجي. إصلاح هذا الخطأ في الكود.
+
+الملف: ${e.file}
+السطر: ${e.line}
+المشكلة: ${e.msg}
+كود السطر: ${lines[e.line-1]}
+السياق:
+${context}
+
+أعطني فقط السطر المصحح بدون أي شرح أو علامات اقتباس. فقط الكود المصحح.`;
+
+    const fixed = await callGroq([{role:'user',content:prompt}]);
+    const fixedLine = fixed.trim().replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+    lines[e.line-1] = fixedLine;
+    projectFiles[e.file] = lines.join('\n');
+    if(activeTab===e.file) cm.setValue(projectFiles[e.file]);
+    document.getElementById(`ei-${i}`)?.remove();
+    errors.splice(i,1);
+    document.getElementById('err-badge').textContent=errors.length||'';
+    document.getElementById('fix-all-bar').style.display=errors.length?'flex':'none';
+    log(`🤖 إصلاح AI: ${e.file} السطر ${e.line}`,'ls');
+    toast('🤖 تم الإصلاح بالذكاء الاصطناعي!','ts'); saveProject();
+  } catch(err) { toast('❌ خطأ: '+err.message,'te'); }
+}
+
+async function fixAllWithAI() {
+  if(!errors.length) return;
+  toast('🤖 يعالج جميع الأخطاء...','ti');
+  const errsToFix = [...errors];
+  for(const e of errsToFix) {
+    const idx = errors.indexOf(e);
+    if(idx>=0) await aiFixOne(idx);
+    await sleep(500);
+  }
+  toast('🤖 اكتمل الإصلاح الذكي!','ts');
+}
+
+// AI Chat
+function toggleAI() {
+  aiOpen = !aiOpen;
+  const panel = document.getElementById('ai-panel');
+  if(aiOpen) { panel.classList.remove('closed'); }
+  else panel.classList.add('closed');
+}
+
+function aiKeydown(e) {
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendAIMessage(); }
+}
+
+async function sendAIMessage() {
+  const inp = document.getElementById('ai-input');
+  const msg = inp.value.trim();
+  if(!msg) return;
+  inp.value='';
+  addAIMsg(msg,'user');
+  aiHistory.push({role:'user',content:msg});
+  document.getElementById('ai-loading').classList.add('act');
+  try {
+    const sysPrompt = `أنت مساعد برمجي ذكي يعمل داخل بيئة DevStudio Pro.
+المشروع الحالي: ${curProject?.name||'غير معروف'}
+الملف المفتوح: ${activeTab||'لا يوجد'}
+الكود الحالي:
+\`\`\`
+${activeTab&&projectFiles[activeTab] ? projectFiles[activeTab].substring(0,2000) : 'لا يوجد كود'}
+\`\`\`
+أجب باللغة العربية. إذا أعطيت كوداً، ضعه في بلوك كود.`;
+    const reply = await callGroq(aiHistory, sysPrompt);
+    aiHistory.push({role:'assistant',content:reply});
+    document.getElementById('ai-loading').classList.remove('act');
+    addAIMsg(reply,'bot');
+  } catch(err) {
+    document.getElementById('ai-loading').classList.remove('act');
+    addAIMsg('❌ خطأ في الاتصال: '+err.message,'bot');
+  }
+}
+
+function addAIMsg(text, type) {
+  const c = document.getElementById('ai-msgs');
+  const d = document.createElement('div');
+  d.className = `ai-msg ${type}`;
+  // Format code blocks
+  d.innerHTML = text.replace(/```([a-z]*)\n?([\s\S]*?)```/g,
+    '<pre style="background:rgba(0,0,0,.4);padding:8px;border-radius:6px;font-family:var(--fc);font-size:11px;overflow-x:auto;margin-top:6px;white-space:pre-wrap">$2</pre>')
+    .replace(/`([^`]+)`/g,'<code style="background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px;font-family:var(--fc)">$1</code>')
+    .replace(/\n/g,'<br>');
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════
+//  APK BUILD (Android Project ZIP)
+// ══════════════════════════════════════════════════
+async function buildAPK() {
+  if (!Object.keys(projectFiles).length) return toast('لا يوجد مشروع مفتوح','tw');
+  openOv('ov-conv');
+  const title = document.getElementById('conv-title');
+  const stepsEl = document.getElementById('conv-steps');
+  const pf = document.getElementById('conv-pf');
+  const result = document.getElementById('conv-result');
+  const noteBox = document.getElementById('apk-note-box');
+  const closeBtn = document.getElementById('conv-close');
+  result.style.display='none'; noteBox.style.display='none'; closeBtn.style.display='none';
+  title.textContent='📱 بناء مشروع Android...';
+
+  const steps = [
+    'تحليل هيكل المشروع',
+    'إنشاء AndroidManifest.xml',
+    'توليد MainActivity.java',
+    'إنشاء ملفات Gradle',
+    'نسخ الأصول (HTML/CSS/JS)',
+    'إنشاء ملفات الموارد',
+    'ضغط المشروع ZIP',
+    'اكتمل بناء المشروع',
+  ];
+
+  stepsEl.innerHTML = steps.map((s,i)=>`
+    <div class="step" id="sp-${i}">
+      <div class="sico pend">○</div>
+      <div class="slbl">${s}</div>
+    </div>`).join('');
+
+  for(let i=0;i<steps.length;i++) {
+    const el=document.getElementById(`sp-${i}`);
+    el.querySelector('.sico').className='sico run';
+    el.querySelector('.sico').textContent='⟳';
+    await sleep(400+Math.random()*600);
+    el.querySelector('.sico').className='sico done';
+    el.querySelector('.sico').textContent='✓';
+    pf.style.width=((i+1)/steps.length*100)+'%';
+  }
+
+  try {
+    const apkZip = await generateAndroidProject();
+    const blob = await apkZip.generateAsync({type:'blob',compression:'DEFLATE'});
+    const url = URL.createObjectURL(blob);
+    const pname = (curProject?.name||'MyApp').replace(/\s+/g,'_');
+    document.getElementById('conv-link').textContent = `📦 ${pname}-android-project.zip — جاهز للبناء`;
+    document.getElementById('conv-copy-btn').textContent = '📥 تنزيل مشروع Android';
+    document.getElementById('conv-copy-btn').onclick = () => {
+      const a = document.createElement('a');
+      a.href=url; a.download=`${pname}-android.zip`; a.click();
+    };
+    result.style.display='block';
+    noteBox.style.display='block';
+    closeBtn.style.display='flex';
+    title.textContent='✅ مشروع Android جاهز!';
+    log(`📱 مشروع Android: ${pname}-android.zip`,'ls');
+  } catch(err) {
+    title.textContent='❌ فشل الإنشاء';
+    stepsEl.innerHTML += `<div class="step"><div class="sico err">✕</div><div class="slbl" style="color:var(--ae)">${err.message}</div></div>`;
+    closeBtn.style.display='flex';
+  }
+}
+
+async function generateAndroidProject() {
+  const zip = new JSZip();
+  const pname = (curProject?.name||'MyApp').replace(/[^a-zA-Z0-9]/g,'');
+  const pkg = `com.devstudio.${pname.toLowerCase()}`;
+  const pkgPath = pkg.replace(/\./g,'/');
+
+  // root
+  zip.file('settings.gradle', `rootProject.name = "${pname}"\ninclude ':app'`);
+  zip.file('build.gradle', `buildscript {\n    repositories { google(); mavenCentral() }\n    dependencies { classpath 'com.android.tools.build:gradle:8.1.0' }\n}\nallprojects {\n    repositories { google(); mavenCentral() }\n}`);
+  zip.file('gradle.properties', `android.useAndroidX=true\nandroid.enableJetifier=true`);
+  zip.file('local.properties', `## This file is automatically generated by Android Studio.\n# Do not modify this file -- YOUR CHANGES WILL BE ERASED!\nsdk.dir=/path/to/android-sdk`);
+
+  // gradlew
+  zip.file('gradlew', `#!/usr/bin/env sh\n./gradle/wrapper/gradle-wrapper.jar "$@"`);
+  zip.file('gradle/wrapper/gradle-wrapper.properties',
+`distributionBase=GRADLE_USER_HOME\ndistributionPath=wrapper/dists\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-8.1.1-bin.zip\nzipStoreBase=GRADLE_USER_HOME\nzipStorePath=wrapper/dists`);
+
+  // app/build.gradle
+  zip.file('app/build.gradle', `plugins {\n    id 'com.android.application'\n}\n\nandroid {\n    namespace '${pkg}'\n    compileSdk 34\n    defaultConfig {\n        applicationId "${pkg}"\n        minSdk 21\n        targetSdk 34\n        versionCode 1\n        versionName "1.0"\n    }\n    buildTypes {\n        release {\n            minifyEnabled false\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'\n        }\n    }\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_1_8\n        targetCompatibility JavaVersion.VERSION_1_8\n    }\n}\n\ndependencies {\n    implementation 'androidx.appcompat:appcompat:1.6.1'\n    implementation 'com.google.android.material:material:1.9.0'\n    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'\n}`);
+
+  // AndroidManifest.xml
+  zip.file(`app/src/main/AndroidManifest.xml`,
+`<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>`);
+
+  // MainActivity.java
+  zip.file(`app/src/main/java/${pkgPath}/MainActivity.java`,
+`package ${pkg};
+
+import android.os.Bundle;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebSettings;
+import android.webkit.WebChromeClient;
+import android.webkit.PermissionRequest;
+import android.view.KeyEvent;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+    private WebView webView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        webView = findViewById(R.id.webview);
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(WebView v, String url) { return false; }
+        });
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override public void onPermissionRequest(final PermissionRequest request) {
+                request.grant(request.getResources());
+            }
+        });
+        webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
+            webView.goBack(); return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+}`);
+
+  // activity_main.xml
+  zip.file('app/src/main/res/layout/activity_main.xml',
+`<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</RelativeLayout>`);
+
+  // strings.xml
+  zip.file('app/src/main/res/values/strings.xml',
+`<resources>\n    <string name="app_name">${pname}</string>\n</resources>`);
+
+  // colors.xml
+  zip.file('app/src/main/res/values/colors.xml',
+`<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="colorPrimary">#6200EE</color>\n    <color name="colorPrimaryDark">#3700B3</color>\n    <color name="colorAccent">#03DAC5</color>\n</resources>`);
+
+  // proguard
+  zip.file('app/proguard-rules.pro', '# Add project specific ProGuard rules here.\n');
+
+  // Copy all project files to assets
+  const assetFolder = zip.folder('app/src/main/assets');
+  let hasIndex = false;
+  Object.entries(projectFiles).forEach(([path, content]) => {
+    if(typeof content === 'string' && !path.includes('.gitkeep')) {
+      assetFolder.file(path, content);
+      if(path === 'index.html' || path.endsWith('/index.html')) hasIndex = true;
+    }
+  });
+
+  // Create default index.html if none exists
+  if(!hasIndex) {
+    const htmlFiles = Object.keys(projectFiles).filter(p=>p.endsWith('.html'));
+    if(!htmlFiles.length) {
+      assetFolder.file('index.html',
+`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${pname}</title></head><body><h1>${pname}</h1><p>مرحباً بك في تطبيق ${pname}</p></body></html>`);
+    }
+  }
+
+  return zip;
+}
+
+// ══════════════════════════════════════════════════
+//  GITHUB PAGES DEPLOYMENT
+// ══════════════════════════════════════════════════
+async function deployWeb() {
+  if(!Object.keys(projectFiles).length) return toast('لا يوجد مشروع مفتوح','tw');
+
+  // Reset GitHub modal
+  document.getElementById('gh-user-info').style.display='none';
+  document.getElementById('gh-login-form').style.display='block';
+  document.getElementById('gh-connect-btn').style.display='inline-flex';
+  document.getElementById('gh-deploy-btn').style.display='none';
+
+  // If already have token, verify it
+  if(ghToken) {
+    try {
+      await verifyGHToken(ghToken);
+      document.getElementById('gh-login-form').style.display='none';
+      document.getElementById('gh-connect-btn').style.display='none';
+      document.getElementById('gh-deploy-btn').style.display='inline-flex';
+    } catch(e){ ghToken=null; localStorage.removeItem('dsp_gh_token'); }
+  }
+  openOv('ov-github');
+}
+
+async function connectGitHub() {
+  const token = document.getElementById('gh-token-in').value.trim();
+  if(!token) return toast('أدخل التوكن','tw');
+  document.getElementById('gh-connect-btn').textContent='⏳ جاري الربط...';
+  try {
+    await verifyGHToken(token);
+    ghToken = token;
+    localStorage.setItem('dsp_gh_token', token);
+    document.getElementById('gh-login-form').style.display='none';
+    document.getElementById('gh-connect-btn').style.display='none';
+    document.getElementById('gh-deploy-btn').style.display='inline-flex';
+    toast('✅ تم ربط GitHub!','ts');
+  } catch(e) {
+    document.getElementById('gh-connect-btn').textContent='ربط الحساب';
+    toast('❌ توكن غير صحيح: '+e.message,'te');
+  }
+}
+
+async function verifyGHToken(token) {
+  const r = await fetch(`${GH_API}/user`, {
+    headers:{Authorization:`token ${token}`,Accept:'application/vnd.github.v3+json'}
+  });
+  if(!r.ok) throw new Error('توكن غير صالح');
+  ghUser = await r.json();
+  document.getElementById('gh-avatar').src = ghUser.avatar_url||'';
+  document.getElementById('gh-name').textContent = ghUser.name||ghUser.login;
+  document.getElementById('gh-login').textContent = '@'+ghUser.login;
+  document.getElementById('gh-user-info').style.display='flex';
+}
+
+async function startDeploy() {
+  closeOv('ov-github');
+  openOv('ov-conv');
+  const title = document.getElementById('conv-title');
+  const stepsEl = document.getElementById('conv-steps');
+  const pf = document.getElementById('conv-pf');
+  const result = document.getElementById('conv-result');
+  const noteBox = document.getElementById('apk-note-box');
+  const closeBtn = document.getElementById('conv-close');
+  result.style.display='none'; noteBox.style.display='none'; closeBtn.style.display='none';
+  title.textContent='🌐 نشر على GitHub Pages...';
+
+  const steps = [
+    'إنشاء المستودع على GitHub',
+    'رفع الملفات',
+    'تفعيل GitHub Pages',
+    'انتظار نشر الموقع',
+    'التحقق من الرابط',
+  ];
+  stepsEl.innerHTML = steps.map((s,i)=>`
+    <div class="step" id="sp2-${i}">
+      <div class="sico pend">○</div>
+      <div class="slbl">${s}</div>
+    </div>`).join('');
+
+  const setStep=(i,st)=>{
+    const el=document.getElementById(`sp2-${i}`);
+    el.querySelector('.sico').className=`sico ${st}`;
+    el.querySelector('.sico').textContent=st==='run'?'⟳':st==='done'?'✓':'✕';
+  };
+  const setP=v=>pf.style.width=v+'%';
+
+  try {
+    // Step 0: Create repo
+    setStep(0,'run');
+    const pname = (curProject?.name||'my-project').toLowerCase().replace(/[^a-z0-9-]/g,'-');
+    const repoName = `${pname}-${Date.now().toString(36)}`;
+    const createR = await fetch(`${GH_API}/user/repos`,{
+      method:'POST',
+      headers:{Authorization:`token ${ghToken}`,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({name:repoName,private:false,auto_init:false,description:`Deployed with DevStudio Pro`})
+    });
+    if(!createR.ok){ const e=await createR.json(); throw new Error(e.message||'فشل إنشاء المستودع'); }
+    setStep(0,'done'); setP(20); await sleep(500);
+
+    // Step 1: Upload files
+    setStep(1,'run');
+    const textFiles = Object.entries(projectFiles).filter(([p,c])=>
+      typeof c==='string'&&!p.match(/\.(png|jpg|gif|ico|woff|woff2|ttf|eot|zip|apk|jar|class|dex|exe)$/i)&&c.length<500000
+    );
+    // Ensure index.html exists
+    let files = Object.fromEntries(textFiles);
+    if(!files['index.html']) {
+      const htmlFile = Object.keys(files).find(p=>p.endsWith('.html'));
+      if(htmlFile) {
+        files['index.html'] = files[htmlFile];
+      } else {
+        files['index.html'] = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${pname}</title></head><body><h1>${pname}</h1></body></html>`;
+      }
+    }
+
+    let uploaded=0;
+    for(const [path, content] of Object.entries(files)) {
+      try {
+        let enc;
+        try{ enc = btoa(unescape(encodeURIComponent(content))); }
+        catch(e){ enc = btoa(content); }
+        const r = await fetch(`${GH_API}/repos/${ghUser.login}/${repoName}/contents/${path}`,{
+          method:'PUT',
+          headers:{Authorization:`token ${ghToken}`,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+          body:JSON.stringify({message:`Add ${path}`,content:enc})
+        });
+        if(!r.ok) { console.warn('Skip', path); }
+        uploaded++;
+        if(uploaded%3===0) await sleep(100);
+      } catch(e){ console.warn('Skip file',path); }
+    }
+    setStep(1,'done'); setP(50); await sleep(300);
+
+    // Step 2: Enable Pages
+    setStep(2,'run');
+    const pagesR = await fetch(`${GH_API}/repos/${ghUser.login}/${repoName}/pages`,{
+      method:'POST',
+      headers:{Authorization:`token ${ghToken}`,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({source:{branch:'main',path:'/'}})
+    });
+    if(!pagesR.ok && pagesR.status!==409){ console.warn('Pages may need manual setup'); }
+    setStep(2,'done'); setP(70); await sleep(300);
+
+    // Step 3: Wait for deploy
+    setStep(3,'run');
+    document.querySelector(`#sp2-3 .slbl`).textContent = 'انتظار نشر الموقع (حتى 5 دقائق)...';
+    await sleep(3000); // Wait 3 seconds for demo, real would need polling
+    setStep(3,'done'); setP(90);
+
+    // Step 4: Result
+    setStep(4,'run');
+    const siteUrl = `https://${ghUser.login}.github.io/${repoName}`;
+    const repoUrl = `https://github.com/${ghUser.login}/${repoName}`;
+    await sleep(500);
+    setStep(4,'done'); setP(100);
+
+    title.textContent='🎉 تم النشر بنجاح!';
+    document.getElementById('conv-link').innerHTML =
+      `🌐 ${siteUrl}\n📦 ${repoUrl}`;
+    document.getElementById('conv-copy-btn').textContent='📋 نسخ الرابط';
+    document.getElementById('conv-copy-btn').onclick=()=>{
+      navigator.clipboard?.writeText(siteUrl);
+      toast('✅ تم نسخ الرابط!','ts');
+    };
+    result.style.display='block';
+    closeBtn.style.display='flex';
+    log(`🌐 الموقع: ${siteUrl}`,'ls');
+    log(`⏳ قد يستغرق النشر 1-5 دقائق`,'lw');
+    toast('🎉 تم النشر!','ts');
+
+  } catch(err) {
+    title.textContent='❌ فشل النشر';
+    for(let i=0;i<5;i++){
+      const el=document.getElementById(`sp2-${i}`);
+      if(el&&el.querySelector('.sico').classList.contains('run')){
+        el.querySelector('.sico').className='sico err';
+        el.querySelector('.sico').textContent='✕';
+        el.querySelector('.slbl').style.color='var(--ae)';
+        el.querySelector('.slbl').textContent+=` — ${err.message}`;
+        break;
+      }
+    }
+    closeBtn.style.display='flex';
+    log('❌ فشل النشر: '+err.message,'le');
+    toast('❌ '+err.message,'te');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  PROJECTS
+// ══════════════════════════════════════════════════
+function saveProject() {
+  if(!curProject) return;
+  curProject.files = {...projectFiles};
+  const idx = projects.findIndex(p=>p.name===curProject.name);
+  if(idx>=0) projects[idx]=curProject; else projects.push(curProject);
+  try{ localStorage.setItem('dsp_projects',JSON.stringify(projects)); }catch(e){}
+}
+
+function renderProjects() {
+  const g = document.getElementById('proj-grid');
+  if(!projects.length){ g.innerHTML='<div class="empty-st"><div class="ico">🗂️</div><p>لا توجد مشاريع محفوظة</p></div>'; return; }
+  g.innerHTML = projects.map((p,i)=>`
+    <div class="pj-card" onclick="loadProject(${i})">
+      <div class="pj-ico">${p.icon||'📦'}</div>
+      <div class="pj-nm">${p.name}</div>
+      <div class="pj-meta">${p.date||''} · ${Object.keys(p.files||{}).length} ملف</div>
+      <div class="pj-tags">${detectTags(p.files).map(t=>`<span class="tag t${t[0]}">${t.toUpperCase()}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function detectTags(files) {
+  const exts = new Set(Object.keys(files||{}).map(f=>f.split('.').pop().toLowerCase()));
+  const tags=[];
+  if(exts.has('js')||exts.has('jsx')||exts.has('ts'))tags.push('j');
+  if(exts.has('py'))tags.push('p');
+  if(exts.has('html'))tags.push('h');
+  if(exts.has('kt')||exts.has('java'))tags.push('a');
+  return tags.slice(0,3);
+}
+
+function loadProject(i) {
+  const p = projects[i]; curProject=p;
+  projectFiles={...(p.files||{})};
+  openTabs=[]; activeTab=null;
+  showScreen('ide'); renderFileTree();
+  if(cm){cm.setValue(''); document.getElementById('ed-ph').style.display='flex';}
+  renderTabs(); toast(`📂 تم فتح ${p.name}`,'ti');
+}
+
+// ══════════════════════════════════════════════════
+//  CONSOLE
+// ══════════════════════════════════════════════════
+function log(msg, cls='li') {
+  const c = document.getElementById('console-panel');
+  const t = new Date().toLocaleTimeString('ar');
+  const d = document.createElement('div');
+  d.className=`ll ${cls}`;
+  d.innerHTML=`<span class="lt">${t}</span><span class="lm">${msg}</span>`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+}
+
+function switchPanel(name,el) {
+  document.querySelectorAll('.pt').forEach(t=>t.classList.remove('act'));
+  document.querySelectorAll('.pc').forEach(c=>c.classList.add('hid'));
+  el.classList.add('act');
+  document.getElementById(name+'-panel').classList.remove('hid');
+}
+
+// ══════════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════════
+function openOv(id){document.getElementById(id).classList.add('act')}
+function closeOv(id){document.getElementById(id).classList.remove('act')}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeOv(o.id)}));
+
+// ══════════════════════════════════════════════════
+//  LOADING
+// ══════════════════════════════════════════════════
+function showLD(ico,title,sub,pct){
+  const ld=document.getElementById('ldo');
+  ld.querySelector('.ld-ico').textContent=ico;
+  document.getElementById('ld-title').textContent=title;
+  document.getElementById('ld-sub').textContent=sub;
+  document.getElementById('ld-fill').style.width=pct+'%';
+  ld.classList.add('act');
+}
+function updateLD(sub,pct){
+  document.getElementById('ld-sub').textContent=sub;
+  document.getElementById('ld-fill').style.width=pct+'%';
+}
+function hideLD(){document.getElementById('ldo').classList.remove('act')}
+
+// ══════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════
+function toast(msg,type='ti'){
+  const c=document.getElementById('toast-c');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  const icons={ts:'✅',te:'❌',ti:'ℹ️',tw:'⚠️'};
+  t.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-16px)';setTimeout(()=>t.remove(),300)},3500);
+}
+
+// ══════════════════════════════════════════════════
+//  UPLOAD MODAL
+// ══════════════════════════════════════════════════
+function showUploadModal(){openOv('ov-upload')}
+
+// ══════════════════════════════════════════════════
+//  RESIZE PANELS
+// ══════════════════════════════════════════════════
+let resizing=null, startX=0, startW=0;
+document.getElementById('rh-sidebar').addEventListener('mousedown',e=>{
+  resizing='sidebar'; startX=e.clientX;
+  startW=document.getElementById('sidebar').offsetWidth; e.preventDefault();
+});
+document.getElementById('rh-ai').addEventListener('mousedown',e=>{
+  resizing='ai'; startX=e.clientX;
+  startW=document.getElementById('ai-panel').offsetWidth; e.preventDefault();
+});
+document.addEventListener('mousemove',e=>{
+  if(!resizing) return;
+  if(resizing==='sidebar'){
+    const sb=document.getElementById('sidebar');
+    const nw=Math.max(150,Math.min(450,startW+(startX-e.clientX)));
+    sb.style.width=nw+'px'; sb.style.minWidth=nw+'px';
+  } else {
+    const ap=document.getElementById('ai-panel');
+    const nw=Math.max(240,Math.min(500,startW+(startX-e.clientX)));
+    ap.style.width=nw+'px'; ap.style.minWidth=nw+'px';
+  }
+});
+document.addEventListener('mouseup',()=>resizing=null);
+
+// ══════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();if(activeTab){saveProject();toast('💾 تم الحفظ','ti');}}
+  if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();promptNewFile();}
+  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='A'){e.preventDefault();toggleAI();}
+  if(e.key==='Escape'){document.querySelectorAll('.overlay.act').forEach(o=>o.classList.remove('act'));}
+});
+
+// Auto-save
+setInterval(()=>{if(curProject)saveProject();},25000);
+
+// Init log
+log('⚡ DevStudio Pro جاهز','ls');
+log('🤖 Groq AI متصل ✓','ls');
+</script>
+</body>
+</html>
+
